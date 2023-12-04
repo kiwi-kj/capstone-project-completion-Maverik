@@ -47,7 +47,7 @@ Maverik is interested in producing more accurate financial plans and initial ROI
 - Compared VAR model with other models to assess relative performance.
 
 ### Business Impact <a name="business-impact"></a>
-- Emphasized potential business impact, especially in terms of future forecast for wach sales metrics.
+- Emphasized potential business impact, especially in terms of future forecast for each sales metrics.
 - Highlighted the model's role in fostering financial planning and increase ROI by forecasting sales for each store by EoY.
 
 ### Continual Improvement <a name="continual-improvement"></a>
