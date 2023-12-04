@@ -1,0 +1,371 @@
+---
+title: "Modeling on Maverick Time Series Data using R"
+subtitle: "MSBA Capstone Completion 2023"
+author: "Data Dive_rse - Kalyani Joshi"
+date: "November-05-2023"
+output: 
+  html_document:
+    number_sections: yes
+    toc: yes
+    fig_width: 15
+    fig_height: 10
+    highlight: tango
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# Set options ----
+options(tibble.print_max = 40,
+        tibble.print_min = 24,
+        width = 222,
+        pillar.min_title_chars = 15)
+
+# Custom functions/values ----
+psc <- function(x){
+  x %>%
+    print(n=56)
+}
+
+pall <- function(x){
+  x %>%
+    print(n=nrow(.))
+}
+
+soutlier <- function(x, lower = FALSE){
+  if (lower){
+    -(IQR(x, na.rm = TRUE) * 1.5) + quantile(x, names = FALSE, na.rm = TRUE)[2]
+  } else {
+    (IQR(x, na.rm = TRUE) * 1.5) + quantile(x, names = FALSE, na.rm = TRUE)[4]
+  }
+}
+```
+
+## Introduction  
+Project Goal: Maverik is interested in producing more accurate financial plans and initial ROI documents for future convenience store locations.The goal of this project is to develop a predictive model that is precise enough for forecasting the first-year sales of new stores that Maverik plans to open.This predictive model will be an ensemble of forecasting and supervised regression models designed to provide daily store level sales forecasts of multiple key product categories and aid Maverik in financial planning, resource allocation, and ROI calculations for its expansion strategy. The Success of this project will be benchmarked against Maverik’s existing Naive forecasting solution. The ability to accurately forecast store sales will enable Maverik to optimize the expenditure of scarce resources by pursuing the most profitable locations and minimizing misallocation of said resources when opening a new store. This will lead to better investment, decreased waste, and more reliable financial evaluations.
+
+## Business Problems
+Maverik aims to open 30 new stores annually and requires an accurate predictive model for the first-year sales to support financial planning and ROI calculations.
+
+## Benefits of the Solution
+Precise forecasts will enable them to make informed decisions on store locations and resource allocation along with achieving set sales targets while checking the progress.
+
+## Success Matrix
+The solution provided will be considered a success if it generates forecasts accurate to within 10% of actual sales, can update forecasts based on new data along with being user-friendly and easy to support.
+
+## Analytical Approach
+We will utilize machine learning techniques to create a forecasting model, starting with data analysis and then training various models using historical sales data.
+
+
+
+## Load libraries
+```{r}
+library(dplyr)
+library(vars)
+library(mFilter)
+library(forecast)
+
+```
+
+# VAR model
+## Read the file
+```{r,warning=FALSE}
+
+t<- read.csv("t_series.csv")
+t$open_date <- as.Date(t$open_date)
+t$date <- as.Date(t$date)
+```
+
+## Spiltting data into train and test
+```{r}
+set.seed(1234)  
+ 
+t_sites <- sample(unique(t$site_id), 30)
+ 
+train_sales <- t %>%   filter(site_id %in% t_sites)
+test_sales <- t %>%   filter(!site_id %in% t_sites)
+
+```
+ 
+We are choosing 30 unique site_id's in train data and remaining in test data
+
+## Creating time series object for train.
+```{r}
+inside_ts <- ts(train_sales$inside_sales, start=c(2021,01), end = c(2023,8), frequency = 12)
+food_ts <- ts(train_sales$food_service_sales, start=c(2021,01), end = c(2023,8), frequency = 12)
+diesel_ts <- ts(train_sales$diesel_sales, start=c(2021,01), end = c(2023,8), frequency = 12)
+unleaded_ts <- ts(train_sales$unleaded_sales, start=c(2021,01), end = c(2023,8), frequency = 12)
+plot(cbind(inside_ts,food_ts,diesel_ts,unleaded_ts))
+
+# Combining ts objects
+sales_train <- cbind(inside_ts, food_ts, diesel_ts, unleaded_ts)
+colnames(sales_train) <- c("inside_ts", "food_ts", "diesel_ts", "unleaded_ts")
+
+```
+Above plot shows both trend and seasonality in the data.
+
+## Creating time series object for test data
+```{r}
+inside_ts_test <- ts(test_sales$inside_sales, start = c(2021, 01), end = c(2023, 8), frequency = 12)
+food_ts_test <- ts(test_sales$food_service_sales, start = c(2021, 01), end = c(2023, 8), frequency = 12)
+diesel_ts_test <- ts(test_sales$diesel_sales, start = c(2021, 01), end = c(2023, 8), frequency = 12)
+unleaded_ts_test <- ts(test_sales$unleaded_sales, start = c(2021, 01), end = c(2023, 8), frequency = 12)
+
+# Combining ts objects
+sales_test <- cbind(inside_ts_test, food_ts_test, diesel_ts_test, unleaded_ts_test)
+colnames(sales_test) <- c("inside_ts_test", "food_ts_test", "diesel_ts_test", "unleaded_ts_test")
+
+```
+
+## ACF Plot for Inside sales in train data
+```{r}
+inside.acf <- acf(inside_ts, main = "inside_sales")
+
+adf_inside <- ur.df(inside_ts, type = "trend", selectlags = "AIC")
+summary(adf_inside)
+```
+The F-statistic evaluates the overall significance of the model. In this instance, it has a value of 4.971, with a low p-value, indicating that the model is statistically significant.
+
+## ACF Plot for food  sales in train data
+```{r}
+food.acf <- acf(food_ts, main = "food_sales")
+
+adf_food <- ur.df(food_ts, type = "trend", selectlags = "AIC")
+summary(adf_food)
+```
+p-value for the ADF test is 0.003177, which is less than the commonly used significance level of 0.05. This indicates that there is statistical evidence to reject the null hypothesis of a unit root, suggesting that the data is stationary.
+
+## ACF Plot for diesel sales in train data
+```{r}
+diesel.acf <- acf(diesel_ts, main = "diesel_sales")
+
+adf_diesel <- ur.df(diesel_ts, type = "trend", selectlags = "AIC")
+summary(adf_diesel)
+```
+p-value for the ADF test is 0.0001682, which is less than the commonly used significance level of 0.05. This indicates that there is statistical evidence to reject the null hypothesis of a unit root, suggesting that the data is stationary.
+
+## ACF Plot for Unleaded sales in train data
+```{r}
+unleaded.acf <- acf(unleaded_ts, main = "unleaded_sales")
+
+adf_unleaded <- ur.df(unleaded_ts, type = "trend", selectlags = "AIC")
+summary(adf_unleaded)
+```
+p-value for the ADF test is 0.01995, which is less than the commonly used significance level of 0.05. This indicates that there is statistical evidence to reject the null hypothesis of a unit root, suggesting that the data is stationary.
+
+
+## Choosing lags to implement VAR model
+```{r}
+info_sales_train <- VARselect(sales_train, lag.max = 10, type = "none")
+info_sales_train$selection
+```
+The VARselect function recommends a lag order of 6 for a Vector Autoregression (VAR) model on the "sales_train" dataset based on multiple information criteria, including AIC, HQ, SC, and FPE. This choice aims to strike a balance between model complexity and goodness of fit.
+
+## Fitting VAR model on Train data
+```{r}
+sales_train_est <- VAR(sales_train, p = 5, type = "none", season = NULL, exog = NULL)
+summary(sales_train_est)
+```
+
+The VAR model results show that all four variables are significantly correlated with each other. The inside_ts variable is the most correlated with all other variables, followed by unleaded_ts, food_ts, and diesel_ts.
+
+The residual covariance matrix shows that the residuals of the four variables are also significantly correlated with each other. The inside_ts and unleaded_ts residuals are the most correlated, followed by the food_ts and diesel_ts residuals.
+
+The residual correlation matrix shows that the correlation between the residuals of inside_ts and unleaded_ts is 0.9640, which is very high. This suggests that the two variables share a lot of common information.
+
+Overall, the VAR model results suggest that the four variables are highly correlated with each other. This means that the variables move together over time. The VAR model can be used to forecast future values of the variables based on their current and past values
+
+## Performing Portmanteau-test on model Residuals for train data
+```{r}
+train_serial <- serial.test(sales_train_est, lags.pt = 19, type = "PT.asymptotic")
+train_serial
+```
+In the case of the VAR model for the sales data, the Portmanteau test statistic is 249.51 with 224 degrees of freedom. The p-value is 0.1163, which is greater than the significance level of 0.05. This means that we fail to reject the null hypothesis of no autocorrelation in the residuals.
+
+The Portmanteau test suggests that there is no evidence of autocorrelation in the residuals of the VAR model. This is a good sign, as it means that the VAR model is a good fit for the data.
+
+## Residual plots for each sales metrics
+```{r}
+plot(train_serial, names = "inside_ts")
+plot(train_serial, names = "food_ts")
+plot(train_serial, names = "unleaded_ts")
+plot(train_serial, names = "diesel_ts")
+```
+The residual plots show that the residuals of the VAR model are randomly scattered around the zero line, with no obvious patterns or outliers. This suggests that the VAR model is a good fit for the data.
+
+## Granger causality Check to check variables Causality
+```{r}
+train_cause_inside_ts <- causality(sales_train_est, cause = "inside_ts")
+train_cause_inside_ts
+
+train_cause_food_ts <- causality(sales_train_est, cause = "food_ts")
+train_cause_food_ts
+
+train_cause_diesel_ts <- causality(sales_train_est, cause = "diesel_ts")
+train_cause_diesel_ts
+
+train_cause_unleaded_ts <- causality(sales_train_est, cause = "unleaded_ts")
+train_cause_unleaded_ts
+```
+
+With the test it is observed that there is no instantaneous causality between any of the variables with each other.
+
+## Forecasting on test data
+```{r}
+sales_test_forecast <- predict(sales_train_est, n.ahead = nrow(sales_test), ci = 0.95, dumvar = NULL, dumvar.forecast = NULL)
+
+```
+
+
+## Forecasted plots
+```{r}
+# Extract forecasted values for each variable in test data
+inside_forecast_values <- sales_test_forecast$fcst$inside_ts
+food_forecast_values <- sales_test_forecast$fcst$food_ts
+diesel_forecast_values <- sales_test_forecast$fcst$diesel_ts
+unleaded_forecast_values <- sales_test_forecast$fcst$unleaded_ts
+
+# Create time series for each forecasted variable in test data
+inside_forecast_ts <- ts(inside_forecast_values, start = c(2021, 1), end = c(2023, 12), frequency = 12)
+food_forecast_ts <- ts(food_forecast_values, start = c(2021, 1), end = c(2023, 12), frequency = 12)
+diesel_forecast_ts <- ts(diesel_forecast_values, start = c(2021, 1), end = c(2023, 12), frequency = 12)
+unleaded_forecast_ts <- ts(unleaded_forecast_values, start = c(2021, 1), end = c(2023, 12), frequency = 12)
+
+# Create and display plots for each forecasted variable with months on x-axis on test data
+autoplot(inside_forecast_ts, xlab = "Year", ylab = "Inside Sales Forecast", main = "Inside Sales Forecast on Test Data") +
+  scale_x_yearmon()  
+
+autoplot(food_forecast_ts, xlab = "Year", ylab = "Food Sales Forecast", main = "Food Sales Forecast on Test Data") +
+  scale_x_yearmon()
+
+autoplot(diesel_forecast_ts, xlab = "Year", ylab = "Diesel Sales Forecast", main = "Diesel Sales Forecast on Test Data") +
+  scale_x_yearmon()
+
+autoplot(unleaded_forecast_ts, xlab = "Year", ylab = "Unleaded Sales Forecast", main = "Unleaded Sales Forecast on Test Data") +
+  scale_x_yearmon()
+
+```
+All 4 plot shows the forecast on test data for various sales metrics. The orange line is the forecast. The forecast is very close to the actual sales, suggesting that the model is doing a good job of forecasting inside sales.
+
+The plot also shows two other lines: the upper and lower confidence intervals. The confidence intervals indicate the range of values within which the actual sales are likely to fall. The narrower the confidence intervals, the more confident we can be in the forecast.
+
+The confidence intervals in the plot are relatively narrow, suggesting that we can be fairly confident in the forecast.
+
+Overall, the plot shows that the VAR model is doing a good job of forecasting on test data.
+
+## MAE, RMSE, MSE values for train data
+```{r}
+# Generate forecasts for the training data
+train_forecast <- predict(sales_train_est, n.ahead = nrow(sales_train))
+
+# Extract the actual and forecasted values for each response variable - train data
+actual_train_inside <- sales_train[,"inside_ts"]
+actual_train_food <- sales_train[,"food_ts"]
+actual_train_diesel <- sales_train[,"diesel_ts"]
+actual_train_unleaded <- sales_train[,"unleaded_ts"]
+
+forecasted_train_inside <- train_forecast$fcst$inside_ts[,"fcst"]
+forecasted_train_food <- train_forecast$fcst$food_ts[,"fcst"]
+forecasted_train_diesel <- train_forecast$fcst$diesel_ts[,"fcst"]
+forecasted_train_unleaded <- train_forecast$fcst$unleaded_ts[,"fcst"]
+
+# Calculate residuals (errors) for each response variable - training dataset
+train_inside_errors <- actual_train_inside - forecasted_train_inside
+train_food_errors <- actual_train_food - forecasted_train_food
+train_diesel_errors <- actual_train_diesel - forecasted_train_diesel
+train_unleaded_errors <- actual_train_unleaded - forecasted_train_unleaded
+
+# Calculate MAE for each response variable - training dataset
+mae_train_inside <- mean(abs(train_inside_errors))
+mae_train_food <- mean(abs(train_food_errors))
+mae_train_diesel <- mean(abs(train_diesel_errors))
+mae_train_unleaded <- mean(abs(train_unleaded_errors))
+
+# Calculate MSE for each response variable - training dataset
+mse_train_inside <- mean(train_inside_errors^2)
+mse_train_food <- mean(train_food_errors^2)
+mse_train_diesel <- mean(train_diesel_errors^2)
+mse_train_unleaded <- mean(train_unleaded_errors^2)
+
+# Calculate RMSE for each response variable - training dataset
+rmse_train_inside <- sqrt(mse_train_inside)
+rmse_train_food <- sqrt(mse_train_food)
+rmse_train_diesel <- sqrt(mse_train_diesel)
+rmse_train_unleaded <- sqrt(mse_train_unleaded)
+
+# Create a data frame with the metrics
+error_metric_train <- data.frame(
+  Metric = c("inside_ts - Training", "food_ts - Training", "diesel_ts - Training", "unleaded_ts - Training"
+             ),
+  MAE = c(mae_train_inside, mae_train_food, mae_train_diesel, mae_train_unleaded),
+  MSE = c(mse_train_inside,mse_train_food,mse_train_diesel,mse_train_unleaded),
+  RMSE = c(rmse_train_inside,rmse_train_food,rmse_train_diesel,rmse_train_unleaded)
+)
+
+# Print the data frame
+print(error_metric_train)
+
+
+```
+
+## MAE, RMSE, MSE values for test data
+```{r}
+
+# Extract the actual and forecasted values for each response variable - test data
+actual_test_inside <- sales_test[,"inside_ts_test"]
+actual_test_food <- sales_test[,"food_ts_test"]
+actual_test_diesel <- sales_test[,"diesel_ts_test"]
+actual_test_unleaded <- sales_test[,"unleaded_ts_test"]
+
+forecasted_test_inside <- inside_forecast_values[,"fcst"]
+forecasted_test_food <- food_forecast_values[,"fcst"]
+forecasted_test_diesel <- diesel_forecast_values[,"fcst"]
+forecasted_test_unleaded <- unleaded_forecast_values[,"fcst"]
+
+# Calculate residuals (errors) for each response variable - test dataset
+test_inside_errors <- actual_test_inside - forecasted_test_inside
+test_food_errors <- actual_test_food - forecasted_test_food
+test_diesel_errors <- actual_test_diesel - forecasted_test_diesel
+test_unleaded_errors <- actual_test_unleaded - forecasted_test_unleaded
+
+# Calculate MAE for each response variable - testing dataset
+mae_test_inside <- mean(abs(test_inside_errors))
+mae_test_food <- mean(abs(test_food_errors))
+mae_test_diesel <- mean(abs(test_diesel_errors))
+mae_test_unleaded <- mean(abs(test_unleaded_errors))
+
+# Calculate MSE for each response variable - testing dataset
+mse_test_inside <- mean(test_inside_errors^2)
+mse_test_food <- mean(test_food_errors^2)
+mse_test_diesel <- mean(test_diesel_errors^2)
+mse_test_unleaded <- mean(test_unleaded_errors^2)
+
+# Calculate RMSE for each response variable - testing dataset
+rmse_test_inside <- sqrt(mse_test_inside)
+rmse_test_food <- sqrt(mse_test_food)
+rmse_test_diesel <- sqrt(mse_test_diesel)
+rmse_test_unleaded <- sqrt(mse_test_unleaded)
+
+# Create a data frame with the metrics
+error_metric_test <- data.frame(
+  Metric = c("inside_ts - Test", "food_ts - Test", "diesel_ts - Test", "unleaded_ts - Test"
+             ),
+  MAE = c(mae_test_inside, mae_test_food, mae_test_diesel, mae_test_unleaded),
+  MSE = c(mse_test_inside,mse_test_food,mse_test_diesel,mse_test_unleaded),
+  RMSE = c(rmse_test_inside,rmse_test_food,rmse_test_diesel,rmse_test_unleaded)
+)
+
+# Print the data frame
+print(error_metric_test)
+
+```
+The training MAE, MSE, and RMSE values for all four variables are lower than the corresponding test data values. This suggests that the model overfits the training data and does not generalize well to the test data.
+
+The inside_ts variable has the highest training and test MAE, MSE, and RMSE values, followed by unleaded_ts, diesel_ts, and food_ts. This suggests that the model is less accurate at forecasting inside_ts and unleaded_ts than it is at forecasting diesel_ts and food_ts.
+
+The VAR model overfits the training data and does not generalize well to the test data. The model is less accurate at forecasting inside_ts and unleaded_ts than it is at forecasting diesel_ts and food_ts.
+
+
+
+
