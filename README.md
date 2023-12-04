@@ -64,9 +64,9 @@ As a team member, I actively participated in various aspects of the project. Pla
 The successful implementation of our model has immense business value for Maverik. By accurately forecasting sales, Maverik can make more informed strategic decisions, reducing waste, and increasing profitability. Precise forecasts will enable them to make informed decisions on store locations and resource allocation along with achieving set sales targets while checking the progress.
 
 ## Difficulties Encountered <a name="difficulties-encountered"></a>
-Throughout the project, our team encountered challenges related to handling multi-variate, multi-targete time series data. Provided data was just for one year which was not enough to accurately forecast total sales. However, our collaborative efforts and problem-solving skills enabled us to overcome these difficulties and deliver a robust solution.
+Throughout the project, our team encountered challenges related to handling multi-variate, multi-target time series data. Provided data was just for one year which was not enough to accurately forecast total sales. However, our collaborative efforts and problem-solving skills enabled us to overcome these difficulties and deliver a robust solution.
 
 ## Learning <a name="learning"></a>
 Through this project, I have gained invaluable experience in data analysis, feature engineering, for multi variate/targeted time series forecasting. I learned how to interpret time series model results and communicate insights effectively. Additionally, working in a team setting enhanced my collaboration and communication skills, contributing to a successful outcome.
 
-In conclusion, our Maverik timne series forecasting project showcases our dedication to data science, collaboration, and delivering business value. It is a testament to our problem-solving abilities and highlights the impact of data analysis in driving informed decisions for Maverik and fostering financial planning.
+In conclusion, our Maverik time series forecasting project showcases our dedication to data science, collaboration, and delivering business value. It is a testament to our problem-solving abilities and highlights the impact of data analysis in driving informed decisions for Maverik and fostering financial planning.
