@@ -55,7 +55,7 @@ Maverik is interested in producing more accurate financial plans and initial ROI
 - Recognized the importance of ongoing model enhancement and optimization.
 
 ## Group's Solution to the Business Problem <a name="groups-solution"></a>
-Our group implemented various models, to forecast future sales and see which model performs the best. The model's performance was rigorously evaluated using metrics such as MAE, RMSE, and MSE. Our collaborative efforts and problem-solving skills resulted in a robust solution that Maverik can leverage to forecast year long sales for new stores which in turn can help them in making strategic decisions and finalcail growth.
+Our group implemented various models, to forecast future sales and see which model performs the best. The model's performance was rigorously evaluated using metrics such as MAE, RMSE, and MSE. Our collaborative efforts and problem-solving skills resulted in a robust solution that Maverik can leverage to forecast year long sales for new stores which in turn can help them in making strategic decisions and financial growth.
 
 ## Contribution <a name="contribution"></a>
 As a team member, I actively participated in various aspects of the project. Played a crucial role in conducting in-depth data analysis, exploring the key sales metrics, identifying trends and seasonility, and providing valuable insights for data pre-processing and modeling decisions. Additionally, I prepared the data for VAR model and implemented the model to forecast sales for each key metrics. 
